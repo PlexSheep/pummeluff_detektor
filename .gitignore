@@ -1,1 +1,6 @@
 .python-version
+models
+pummeluff_detektor/__pycache__
+confusion.png
+plot.png
+variance.png
