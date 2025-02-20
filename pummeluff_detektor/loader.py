@@ -263,42 +263,33 @@ def get_latest_model_paths(base_path: str = 'models') -> Optional[Tuple[str, str
     if not os.path.exists(base_path):
         return None
 
-    # Get all files in the models directory
-    files = os.listdir(base_path)
+    # Find all joblib files
+    model_files = []
+    encoder_files = []
+    metrics_files = []
 
-    # Group files by timestamp
-    timestamps = {}
-    for f in files:
-        if f.endswith('.joblib'):
-            # Extract timestamp from filename (assumes format: *_YYYYMMDD_HHMMSS.joblib)
-            try:
-                timestamp = f.split('_')[-1].replace('.joblib', '')
-                file_type = f.split('_')[0]
-                if timestamp not in timestamps:
-                    timestamps[timestamp] = {}
-                timestamps[timestamp][file_type] = f
-            except IndexError:
-                continue
+    for f in os.listdir(base_path):
+        if not f.endswith('.joblib'):
+            continue
 
-    if not timestamps:
+        full_path = os.path.join(base_path, f)
+        if f.startswith('pokemon_classifier_'):
+            model_files.append(full_path)
+        elif f.startswith('label_encoder_'):
+            encoder_files.append(full_path)
+        elif f.startswith('metrics_'):
+            metrics_files.append(full_path)
+
+    # Make sure we have at least one complete set
+    if not (model_files and encoder_files and metrics_files):
         return None
 
-    # Get the latest timestamp that has all required files
-    latest = None
-    for timestamp, files in timestamps.items():
-        if all(k in files for k in ['pokemon_classifier', 'label_encoder', 'metrics']):
-            if latest is None or timestamp > latest:
-                latest = timestamp
+    # Get the latest files by modification time
+    latest_model = max(model_files, key=os.path.getmtime)
+    latest_encoder = max(encoder_files, key=os.path.getmtime)
+    latest_metrics = max(metrics_files, key=os.path.getmtime)
 
-    if latest is None:
-        return None
-
-    # Return paths for the latest complete set
-    return (
-        os.path.join(base_path, timestamps[latest]['pokemon_classifier']),
-        os.path.join(base_path, timestamps[latest]['label_encoder']),
-        os.path.join(base_path, timestamps[latest]['metrics'])
-    )
+    return latest_model, latest_encoder, latest_metrics
 
 
 def load() -> Tuple[RandomForestClassifier, LabelEncoder, Metrics]:

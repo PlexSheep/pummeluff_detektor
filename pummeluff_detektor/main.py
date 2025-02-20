@@ -84,7 +84,7 @@ def main():
     print(f"Jigglypuff probability: {jigglypuff_prob:.2%}")
     print(f"Predicted class: {pred_class}")
 
-    if jigglypuff_prob >= args.threshold:
+    if pred_class == "Jigglypuff":
         print("\nVerdict: This appears to be a Jigglypuff! ꒰◍ˊ◡ˋ꒱")
     else:
         print("\nVerdict: This does not appear to be a Jigglypuff (｡•́︿•̀｡)")
