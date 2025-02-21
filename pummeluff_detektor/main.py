@@ -107,7 +107,6 @@ def detector(args: argparse.Namespace):
 
     logger.info("Loading model...")
     detector = loader.Detector.load_or_train(
-        verbose=args.verbose,
         force_training=args.train,
         training_images_dir=args.training_images
     )
