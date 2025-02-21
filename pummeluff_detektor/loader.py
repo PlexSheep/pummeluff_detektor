@@ -298,7 +298,8 @@ class Detector:
         Returns:
             Path: Path to the downloaded dataset directory
         """
-        path = kagglehub.dataset_download("alinapalacios/cs63-pokemon-dataset")
+        path = kagglehub.dataset_download(
+            "plexsheep/jigglypuff-detection-data")
 
         return Path(path)
 
