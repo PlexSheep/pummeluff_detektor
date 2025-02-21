@@ -2,7 +2,25 @@
     <img alt="icon" src="./docs/logo.png" width="60%"/>
 </div>
 
-# 🎵 Pummeluff Detektor ✨
+<div align="center">
+    <img alt="icon" src="./docs/logo.png" width="60%"/>
+    <h3>🎵 Pummeluff Detektor ✨</h3>
+    <p>
+        A ML-powered detector to distinguish Jigglypuff from imposters (especially Kirby!)
+    </p>
+    <br/>
+    <a href="https://github.com/PlexSheep/pummeluff_detektor/actions">
+        <img src="https://img.shields.io/github/actions/workflow/status/PlexSheep/pummeluff_detektor/release.yml?label=Release" alt="Release Status"/>
+    </a>
+    <a href="https://github.com/PlexSheep/pummeluff_detektor/blob/main/LICENSE">
+        <img src="https://img.shields.io/github/license/PlexSheep/pummeluff_detektor" alt="License"/>
+    </a>
+    <a href="https://github.com/PlexSheep/pummeluff_detektor/releases">
+        <img src="https://img.shields.io/github/v/release/PlexSheep/pummeluff_detektor" alt="Release"/>
+    </a>
+    <br/>
+    <img src="https://img.shields.io/badge/python-%233776AB.svg?style=flat&logo=python&logoColor=white" alt="Python"/>
+</div>
 
 > "Is it a Jigglypuff seen from above?" - Professor Oak, probably
 
