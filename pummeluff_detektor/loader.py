@@ -95,6 +95,18 @@ class Detector:
         for idx, class_name in enumerate(self.get_class_labels()):
             buf += f"{idx:02}: {class_name}\n"
 
+        buf += f"\nPerformance:\n"
+        buf += f"accuracy   : {self.class_report["accuracy"]:.02%}\n"
+
+        buf += f"\nPerformance by class:\n"
+        for class_name in self.get_class_labels():
+            tclass = self.class_report[class_name]
+            buf += f" {class_name}:\n"
+            buf += f"  precision: {tclass["precision"]:.02%}\n"
+            buf += f"  recall   : {tclass["recall"]:.02%}\n"
+            buf += f"  f1-score : {tclass["f1-score"]:.02%}\n"
+            buf += f"  support  : {tclass["support"]}\n"
+
         return buf
 
     def save(self, base_path: Path = MODEL_DIR) -> None:
@@ -188,8 +200,8 @@ class Detector:
 
         logger.info("Training Random Forest Classifier...")
         rf_classifier = RandomForestClassifier(
-            n_estimators=120,
-            max_depth=25,
+            n_estimators=20,
+            max_depth=10,
             n_jobs=-1,
             random_state=SEED
         )
@@ -313,7 +325,8 @@ class Detector:
 
         DATASET_DIR.mkdir(parents=True, exist_ok=True)
 
-        logger.info("Downloading dataset from HuggingFace...")
+        logger.info(
+            f"Downloading dataset from HuggingFace to '{DATASET_DIR}'...")
 
         path = snapshot_download(
             repo_id=f"plexsheep/{DEFAULT_DATASET}",
