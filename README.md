@@ -79,7 +79,7 @@ The detector uses these emoticons to express its confidence:
 ```bash
 # Clone the repository
 git clone https://github.com/PlexSheep/pummeluff_detektor
-cd pummeluff-detektor
+cd pummeluff_detektor
 
 # Install dependencies
 poetry install
