@@ -6,7 +6,7 @@ from PIL import Image
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, classification_report
 import seaborn as sns
 import matplotlib.pyplot as plt
 from multiprocessing import Pool, cpu_count
@@ -30,15 +30,20 @@ STANDARD_BASE_PATH: Path = Path("models")
 class Detector:
     model: RandomForestClassifier
     label_encoder: LabelEncoder
-    class_report: dict[Any, Any] | str
+    class_report: dict[Any, Any]
     feature_importance: Any
     verbose: bool = False
     seed = SEED
 
-    def __init__(self, model: RandomForestClassifier, label_encoder: LabelEncoder, verbose: bool = False) -> None:
+    def __init__(self,
+                 model: RandomForestClassifier,
+                 label_encoder: LabelEncoder,
+                 class_report: dict[Any, Any],
+                 verbose: bool = False) -> None:
         self.model = model
         self.label_encoder = label_encoder
         self.verbose = verbose
+        self.class_report = class_report
 
     def get_class_labels(self) -> list[str]:
         l = []
@@ -57,9 +62,15 @@ class Detector:
         for idx, class_name in enumerate(self.get_class_labels()):
             buf += f"{idx:02}: {class_name}\n"
 
+        print(f"Class report\n{self.class_report}")
+
         return buf
 
     def save(self, base_path: Path = STANDARD_BASE_PATH) -> None:
+        try:
+            os.mkdir(base_path)
+        except FileExistsError:
+            pass
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         detector_path = os.path.join(
             base_path, f'pummeluff_detektor_{timestamp}.joblib')
@@ -72,7 +83,7 @@ class Detector:
         return d
 
     @staticmethod
-    def train(verbose: bool = False) -> Detector:
+    def train(verbose: bool = True) -> Detector:
         # If we get here, either no model exists or loading failed
         # Set random seed for reproducibility
         np.random.seed(SEED)
@@ -83,13 +94,25 @@ class Detector:
         X, y, label_encoder = Detector.load_image_dataset(
             data_base_path, target_size=(64, 64))
 
+        if verbose:
+            # Print dataset information
+            print("\nDataset Summary:")
+            print(f"Number of images: {len(X)}")
+            print(f"Image shape: {X[0].shape}")
+            print("\nClass distribution:")
+            for class_name, count in zip(label_encoder.classes_, np.bincount(y)):
+                print(f"{class_name}: {count} images")
+            print("\n")
+
         # Preprocess the data
         X = X.astype('float32') / 255.0  # Normalize pixel values
         X = X.reshape(X.shape[0], -1)    # Flatten the images
 
+        random_state: int = np.random.randint(1_000_000_000)
+
         # Split the dataset
         X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=np.random.randint(), stratify=y
+            X, y, test_size=0.2, random_state=random_state, stratify=y
         )
 
         print("\nTraining Random Forest Classifier...")
@@ -102,7 +125,19 @@ class Detector:
 
         rf_classifier.fit(X_train, y_train)
 
-        d = Detector(rf_classifier, label_encoder, verbose=verbose)
+        # Make predictions
+        y_pred = rf_classifier.predict(X_test)
+
+        # Generate metrics
+        class_report = classification_report(
+            y_test,
+            y_pred,
+            target_names=label_encoder.classes_,
+            output_dict=True
+        )
+
+        d = Detector(rf_classifier, label_encoder,
+                     class_report=class_report, verbose=verbose)
         d.save()
         return d
 
