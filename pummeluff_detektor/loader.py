@@ -1,5 +1,5 @@
-import logging
 from __future__ import annotations
+import logging
 import kagglehub
 import os
 import numpy as np
@@ -29,6 +29,17 @@ STANDARD_BASE_PATH: Path = Path("models")
 
 
 class Detector:
+    """
+    A detector class for identifying something in images, specifically trained to distinguish
+    Jigglypuff from other motives (especially kirby).
+
+    Attributes:
+        model (RandomForestClassifier): The trained classifier model
+        label_encoder (LabelEncoder): Encoder for converting between label names and indices
+        class_report (dict): Classification report containing precision, recall, etc.
+        feature_importance (Any): Feature importance scores from the model
+        seed (int): seed for randomized things, for reproducibility (default is the SEED constant)
+    """
     model: RandomForestClassifier
     label_encoder: LabelEncoder
     class_report: dict[Any, Any]
@@ -47,9 +58,22 @@ class Detector:
         self.class_report = class_report
 
     def get_class_labels(self) -> list[str]:
+        """
+        Get list of class labels that the model can detect.
+
+        Returns:
+            list[str]: List of class names as strings
+        """
         return [str(c) for c in self.label_encoder.classes_]
 
     def info(self) -> str:
+        """
+        Get a formatted string containing model information.
+
+        Returns:
+            str: Multi-line string containing model type, parameters, available classes,
+                and classification report
+        """
         buf = ""
         buf += f"Model type: {str(self.model.__class__.__name__)}\n\n"
         buf += f"Parameters:\n"
@@ -65,6 +89,13 @@ class Detector:
         return buf
 
     def save(self, base_path: Path = STANDARD_BASE_PATH) -> None:
+        """
+        Save the detector to a joblib file.
+
+        Args:
+            base_path (Path): Directory where the model should be saved
+                            (default: STANDARD_BASE_PATH)
+        """
         try:
             os.mkdir(base_path)
         except FileExistsError:
@@ -77,6 +108,19 @@ class Detector:
 
     @staticmethod
     def load(detector_path: Path) -> Detector:
+        """
+        Load a detector from a joblib file.
+
+        Args:
+            detector_path (Path): Path to the saved detector file
+
+        Returns:
+            Detector: Loaded detector instance
+
+        Raises:
+            FileNotFoundError: If detector file doesn't exist
+            ValueError: If file is not a valid detector
+        """
         logger = logging.getLogger(__name__)
         logger.info(f"trying to load a detector at: {detector_path}")
         d: Detector = joblib.load(detector_path)
@@ -84,6 +128,20 @@ class Detector:
 
     @staticmethod
     def train(training_images_dir: Path | None = None) -> Detector:
+        """
+        Train a new detector model.
+
+        Args:
+            training_images_dir (Path | None): Optional path to custom training images.
+                                               If None, downloads standard dataset.
+
+        Returns:
+            Detector: Trained detector instance
+
+        Note:
+            Saves confusion matrix plot to 'confusion.png'
+            Automatically saves the trained model
+        """
         logger = logging.getLogger(__name__)
         # Set random seed for reproducibility
         np.random.seed(SEED)
@@ -159,6 +217,14 @@ class Detector:
     ) -> Detector:
         """
         Load the most recent model if it exists, otherwise train a new one.
+
+        Args:
+            training_images_dir (Path | None): Optional path to custom training images
+            force_training (bool): If True, always train new model regardless of existing ones
+            base_path (Path): Directory to look for existing models
+
+        Returns:
+            Detector: Loaded or newly trained detector instance
         """
         logger = logging.getLogger(__name__)
         if not force_training:
@@ -177,6 +243,15 @@ class Detector:
 
     @staticmethod
     def load_latest(base_path: Path = STANDARD_BASE_PATH) -> Detector | None:
+        """
+        Load the most recently saved detector model.
+
+        Args:
+            base_path (Path): Directory to search for model files
+
+        Returns:
+            Detector | None: Most recent detector if found, None otherwise
+        """
         p = Detector.get_latest_detector_path(base_path)
         if p is not None:
             return Detector.load(p)
@@ -185,6 +260,15 @@ class Detector:
 
     @staticmethod
     def get_latest_detector_path(base_path: Path = STANDARD_BASE_PATH) -> Path | None:
+        """
+        Get the path to the most recently saved detector model.
+
+        Args:
+            base_path (Path): Directory to search for model files
+
+        Returns:
+            Path | None: Path to most recent detector file if found, None otherwise
+        """
         if not os.path.exists(base_path):
             return None
 
@@ -208,6 +292,12 @@ class Detector:
 
     @staticmethod
     def download_dataset() -> Path:
+        """
+        Download the default dataset from Kaggle.
+
+        Returns:
+            Path: Path to the downloaded dataset directory
+        """
         path = kagglehub.dataset_download("alinapalacios/cs63-pokemon-dataset")
 
         return Path(path)
@@ -220,6 +310,18 @@ class Detector:
     ) -> Tuple[BatchImageArray, Labels, LabelEncoder]:
         """
         Load training images and their labels using parallel processing.
+
+        Args:
+            base_path (Path): Root directory containing class subdirectories
+            target_size (Tuple[int, int]): Size to resize images to (width, height)
+            n_jobs (Optional[int]): Number of parallel processes to use.
+                                  If None, uses all CPU cores.
+
+        Returns:
+            Tuple containing:
+                BatchImageArray: Array of processed images (n_samples, height, width, 3)
+                Labels: Array of numeric labels
+                LabelEncoder: Encoder for converting between label names and indices
         """
         if n_jobs is None:
             n_jobs = cpu_count()

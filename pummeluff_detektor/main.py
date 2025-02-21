@@ -1,3 +1,4 @@
+import argparse
 import sys
 import numpy as np
 from pathlib import Path
@@ -10,7 +11,16 @@ EM_ANGRY = 'ヽ(｀⌒´メ)ノ'
 
 
 def setup_logging(verbose: bool) -> None:
-    """Configure logging based on verbosity level."""
+    """
+    Configure logging based on verbosity level.
+
+    Args:
+        verbose (bool): If True, sets DEBUG level and adds file logging.
+                       If False, sets INFO level with console only.
+
+    Note:
+        Creates 'pummeluff_detector.log' file when verbose is True
+    """
     level = logging.DEBUG if verbose else logging.INFO
 
     # Create formatters
@@ -42,11 +52,14 @@ def process_image(image_path: str, target_size=(64, 64)) -> np.ndarray:
     Load and preprocess a single image for classification.
 
     Args:
-        image_path: Path to the image file
-        target_size: Target size for resizing
+        image_path (str): Path to the image file
+        target_size (tuple): Target size for resizing, default (64, 64)
 
     Returns:
-        Preprocessed image array
+        np.ndarray: Preprocessed image array (1, height * width * 3)
+
+    Raises:
+        SystemExit: If image processing fails
     """
     from PIL import Image
     logger = logging.getLogger(__name__)
@@ -68,7 +81,21 @@ def process_image(image_path: str, target_size=(64, 64)) -> np.ndarray:
         sys.exit(1)
 
 
-def detector(args):
+def detector(args: argparse.Namespace):
+    """
+    Main detection function that processes an image and reports results.
+
+    Args:
+        args (argparse.Namespace): Command line arguments including:
+            - image_path: Path to image to classify
+            - verbose: Whether to show debug output
+            - train: Whether to force training new model
+            - threshold: Confidence threshold for detection
+            - training_images: Optional path to training images
+
+    Raises:
+        SystemExit: On various error conditions
+    """
     logger = logging.getLogger(__name__)
     import loader
 
