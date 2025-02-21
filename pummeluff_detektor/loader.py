@@ -95,8 +95,6 @@ class Detector:
         for idx, class_name in enumerate(self.get_class_labels()):
             buf += f"{idx:02}: {class_name}\n"
 
-        buf += f"Class report\n{self.class_report}"
-
         return buf
 
     def save(self, base_path: Path = MODEL_DIR) -> None:
