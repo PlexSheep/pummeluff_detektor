@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0](https://github.com/PlexSheep/pummeluff_detektor/compare/v0.2.0...v0.3.0) (2025-02-21)
+
+
+### Features
+
+* add info option ([ca1e4a1](https://github.com/PlexSheep/pummeluff_detektor/commit/ca1e4a14f4ef953cc2389b68a7e55467770f4159))
+
+
+### Bug Fixes
+
+* adjust model training parameters to increase performance and get out of overfitting ([571df68](https://github.com/PlexSheep/pummeluff_detektor/commit/571df6806f08c2e094f34fa99a9c6b26013c375e))
+
 ## [0.2.0](https://github.com/PlexSheep/pummeluff_detektor/compare/v0.1.0...v0.2.0) (2025-02-21)
 
 
