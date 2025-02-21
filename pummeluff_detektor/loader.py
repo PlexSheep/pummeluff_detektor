@@ -5,8 +5,8 @@ import numpy as np
 from PIL import Image
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import confusion_matrix
 import seaborn as sns
 import matplotlib.pyplot as plt
 from multiprocessing import Pool, cpu_count
@@ -14,7 +14,7 @@ from datetime import datetime
 from tqdm import tqdm
 import joblib
 from pathlib import Path
-from typing import Tuple, List, Optional, Dict, Any, Union, Callable
+from typing import Tuple, List, Optional,  Any
 
 # Custom types
 ImageArray = np.ndarray  # Shape: (height, width, 3)
@@ -23,26 +23,206 @@ FlatImageArray = np.ndarray  # Shape: (n_samples, height * width * 3)
 Labels = np.ndarray  # Shape: (n_samples,)
 ProcessArgs = Tuple[str, str, Tuple[int, int]]
 
-SEED = 19
+SEED: int = 19
+STANDARD_BASE_PATH: Path = Path("models")
 
 
-class Metrics:
+class Detector:
+    model: RandomForestClassifier
+    label_encoder: LabelEncoder
     class_report: dict[Any, Any] | str
     feature_importance: Any
+    verbose: bool = False
     seed = SEED
 
-    def __init__(self, class_report, feature_importance) -> None:
-        self.class_report = class_report
-        self.feature_importance = feature_importance
+    def __init__(self, model: RandomForestClassifier, label_encoder: LabelEncoder, verbose: bool = False) -> None:
+        self.model = model
+        self.label_encoder = label_encoder
+        self.verbose = verbose
 
-    def info(self, model: RandomForestClassifier, label_encoder: LabelEncoder) -> str:
-        return "no"
+    def get_class_labels(self) -> list[str]:
+        l = []
+        for c in self.label_encoder.classes_:
+            l.append(str(c))
+        return l
 
+    def info(self) -> str:
+        buf = ""
+        buf += f"Model type: {str(self.model.__class__.__name__)}\n\n"
+        buf += f"Parameters:\n"
 
-def download_dataset() -> Path:
-    path = kagglehub.dataset_download("alinapalacios/cs63-pokemon-dataset")
+        for (k, v) in self.model.get_params().items():
+            buf += f"{k:<26}: {v}\n"
+        buf += "\nAvailable classes:\n"
+        for idx, class_name in enumerate(self.get_class_labels()):
+            buf += f"{idx:02}: {class_name}\n"
 
-    return Path(path)
+        return buf
+
+    def save(self, base_path: Path = STANDARD_BASE_PATH) -> None:
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        detector_path = os.path.join(
+            base_path, f'pummeluff_detektor_{timestamp}.joblib')
+        joblib.dump(self, detector_path)
+
+    @staticmethod
+    def load(detector_path: Path, verbose: bool = False) -> Detector:
+        d: Detector = joblib.load(detector_path)
+        d.verbose = verbose
+        return d
+
+    @staticmethod
+    def train(verbose: bool = False) -> Detector:
+        # If we get here, either no model exists or loading failed
+        # Set random seed for reproducibility
+        np.random.seed(SEED)
+
+        # Load the dataset using parallel processing
+        print("Loading Pokemon dataset...")
+        data_base_path: Path = Detector.download_dataset()  # Get the dataset path
+        X, y, label_encoder = Detector.load_image_dataset(
+            data_base_path, target_size=(64, 64))
+
+        # Preprocess the data
+        X = X.astype('float32') / 255.0  # Normalize pixel values
+        X = X.reshape(X.shape[0], -1)    # Flatten the images
+
+        # Split the dataset
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=np.random.randint(), stratify=y
+        )
+
+        print("\nTraining Random Forest Classifier...")
+        rf_classifier = RandomForestClassifier(
+            n_estimators=120,
+            max_depth=25,
+            n_jobs=-1,
+            random_state=SEED
+        )
+
+        rf_classifier.fit(X_train, y_train)
+
+        d = Detector(rf_classifier, label_encoder, verbose=verbose)
+        d.save()
+        return d
+
+    @staticmethod
+    def load_or_train(verbose: bool = False, force_training: bool = False, base_path: Path = STANDARD_BASE_PATH) -> Detector:
+        """
+        Load the most recent model if it exists, otherwise train a new one.
+        """
+        if not force_training:
+            if verbose:
+                print("Trying to load the latest model...")
+            loaded = Detector.load_latest(base_path)
+
+            if loaded is not None:
+                try:
+                    loaded.verbose = verbose
+                    if verbose:
+                        print("Successfully loaded existing model!")
+                    return loaded
+                except FileNotFoundError as e:
+                    print(f"Error loading existing model: {e}")
+                    print("Will train a new model instead.")
+            else:
+                print("No existing model found. Will train a new one.")
+        return Detector.train(verbose=verbose)
+
+    @staticmethod
+    def load_latest(base_path: Path = STANDARD_BASE_PATH, verbose: bool = False) -> Detector | None:
+        p = Detector.get_latest_detector_path(base_path)
+        if p is not None:
+            return Detector.load(p, verbose=verbose)
+        else:
+            return None
+
+    @staticmethod
+    def get_latest_detector_path(base_path: Path = STANDARD_BASE_PATH) -> Path | None:
+        if not os.path.exists(base_path):
+            return None
+
+        # Find all joblib files
+        detector_files = []
+
+        for f in os.listdir(base_path):
+            if not f.endswith('.joblib'):
+                continue
+
+            full_path = os.path.join(base_path, f)
+            if f.startswith('pummeluff_detektor_'):
+                detector_files.append(full_path)
+
+        # Make sure we have at least one complete set
+        if not (detector_files):
+            return None
+
+        # Get the latest files by modification time
+        return max(detector_files, key=os.path.getmtime)
+
+    @staticmethod
+    def download_dataset() -> Path:
+        path = kagglehub.dataset_download("alinapalacios/cs63-pokemon-dataset")
+
+        return Path(path)
+
+    @staticmethod
+    def load_image_dataset(
+        base_path: Path,
+        target_size: Tuple[int, int],
+        n_jobs: Optional[int] = None
+    ) -> Tuple[BatchImageArray, Labels, LabelEncoder]:
+        """
+        Load training images and their labels using parallel processing.
+        """
+        if n_jobs is None:
+            n_jobs = cpu_count()
+
+        # Get all Pokemon classes
+        classes: List[str] = [
+            d for d in os.listdir(base_path)
+            if os.path.isdir(os.path.join(base_path, d))
+        ]
+
+        # Prepare arguments for parallel processing
+        all_image_args: List[ProcessArgs] = []
+        for tclass in classes:
+            pokemon_path = os.path.join(base_path, tclass, tclass)
+
+            if not os.path.exists(pokemon_path):
+                continue
+
+            valid_extensions = {'.jpg', '.jpeg', '.png'}
+            image_files = [
+                f for f in os.listdir(pokemon_path)
+                if os.path.splitext(f.lower())[1] in valid_extensions
+            ]
+
+            for img_file in image_files:
+                img_path = os.path.join(pokemon_path, img_file)
+                all_image_args.append((img_path, tclass, target_size))
+
+        # Process images in parallel
+        print(
+            f"\nProcessing {len(all_image_args)} images using {n_jobs} processes...")
+        with Pool(n_jobs) as pool:
+            results = list(tqdm(
+                pool.imap(load_and_process_image, all_image_args),
+                total=len(all_image_args),
+                desc="Loading images"
+            ))
+
+        # Filter out None results and separate images and labels
+        results = [r for r in results if r is not None]
+        images, labels = zip(*results)
+
+        X: BatchImageArray = np.array(images)
+
+        # Encode labels
+        label_encoder = LabelEncoder()
+        y: Labels = label_encoder.fit_transform(labels)
+
+        return X, y, label_encoder
 
 
 def load_and_process_image(args: ProcessArgs) -> Optional[Tuple[ImageArray, str]]:
@@ -64,72 +244,6 @@ def load_and_process_image(args: ProcessArgs) -> Optional[Tuple[ImageArray, str]
     except Exception as e:
         print(f"Error loading {img_path}: {str(e)}")
         return None
-
-
-def load_pokemon_dataset(
-    base_path: str,
-    target_size: Tuple[int, int] = (64, 64),
-    n_jobs: Optional[int] = None
-) -> Tuple[BatchImageArray, Labels, LabelEncoder]:
-    """
-    Load Pokemon images and their labels using parallel processing.
-
-    Args:
-        base_path: Directory containing Pokemon subdirectories
-        target_size: Tuple of (width, height) for resizing images
-        n_jobs: Number of parallel processes to use
-
-    Returns:
-        Tuple of (image_arrays, labels, label_encoder)
-    """
-    if n_jobs is None:
-        n_jobs = cpu_count()
-
-    # Get all Pokemon classes
-    pokemon_classes: List[str] = [
-        d for d in os.listdir(base_path)
-        if os.path.isdir(os.path.join(base_path, d))
-    ]
-
-    # Prepare arguments for parallel processing
-    all_image_args: List[ProcessArgs] = []
-    for pokemon in pokemon_classes:
-        pokemon_path = os.path.join(base_path, pokemon, pokemon)
-
-        if not os.path.exists(pokemon_path):
-            continue
-
-        valid_extensions = {'.jpg', '.jpeg', '.png'}
-        image_files = [
-            f for f in os.listdir(pokemon_path)
-            if os.path.splitext(f.lower())[1] in valid_extensions
-        ]
-
-        for img_file in image_files:
-            img_path = os.path.join(pokemon_path, img_file)
-            all_image_args.append((img_path, pokemon, target_size))
-
-    # Process images in parallel
-    print(
-        f"\nProcessing {len(all_image_args)} images using {n_jobs} processes...")
-    with Pool(n_jobs) as pool:
-        results = list(tqdm(
-            pool.imap(load_and_process_image, all_image_args),
-            total=len(all_image_args),
-            desc="Loading images"
-        ))
-
-    # Filter out None results and separate images and labels
-    results = [r for r in results if r is not None]
-    images, labels = zip(*results)
-
-    X: BatchImageArray = np.array(images)
-
-    # Encode labels
-    label_encoder = LabelEncoder()
-    y: Labels = label_encoder.fit_transform(labels)
-
-    return X, y, label_encoder
 
 
 def plot_confusion_matrix(
@@ -158,190 +272,3 @@ def plot_confusion_matrix(
     plt.yticks(rotation=45)
     plt.tight_layout()
     plt.savefig("confusion.png")
-
-
-def save_model(
-    model: RandomForestClassifier,
-    label_encoder: LabelEncoder,
-    metrics: Metrics,
-    base_path: str = 'models'
-) -> Tuple[str, str, str]:
-    """
-    Save the model, label encoder, and metrics.
-
-    Args:
-        model: Trained RandomForestClassifier
-        label_encoder: Fitted LabelEncoder
-        metrics: Dictionary containing model metrics
-        base_path: Directory to save model files
-
-    Returns:
-        Tuple of paths (model_path, encoder_path, metrics_path)
-    """
-    os.makedirs(base_path, exist_ok=True)
-
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-
-    model_path = os.path.join(
-        base_path, f'pokemon_classifier_{timestamp}.joblib')
-    encoder_path = os.path.join(base_path, f'label_encoder_{timestamp}.joblib')
-    metrics_path = os.path.join(base_path, f'metrics_{timestamp}.joblib')
-
-    joblib.dump(model, model_path)
-    joblib.dump(label_encoder, encoder_path)
-    joblib.dump(metrics, metrics_path)
-
-    print(f"\nModel saved to {model_path}")
-    print(f"Label encoder saved to {encoder_path}")
-    print(f"Metrics saved to {metrics_path}")
-
-    return model_path, encoder_path, metrics_path
-
-
-def load_saved_model(
-    model_path: str,
-    encoder_path: str,
-    metrics_path: Optional[str] = None
-) -> Tuple[RandomForestClassifier, LabelEncoder, Metrics]:
-    """
-    Load a saved model and its associated files.
-
-    Args:
-        model_path: Path to saved model file
-        encoder_path: Path to saved label encoder
-        metrics_path: Optional path to saved metrics
-
-    Returns:
-        Tuple of (model, label_encoder, metrics)
-    """
-    model: RandomForestClassifier = joblib.load(model_path)
-    label_encoder: LabelEncoder = joblib.load(encoder_path)
-    metrics: Metrics = joblib.load(
-        metrics_path) if metrics_path else None
-
-    return model, label_encoder, metrics
-
-
-def get_latest_model_paths(base_path: str = 'models') -> Optional[Tuple[str, str, str]]:
-    """
-    Find the most recently saved model files.
-
-    Args:
-        base_path: Directory containing model files
-
-    Returns:
-        Tuple of (model_path, encoder_path, metrics_path) or None if no models found
-    """
-    if not os.path.exists(base_path):
-        return None
-
-    # Find all joblib files
-    model_files = []
-    encoder_files = []
-    metrics_files = []
-
-    for f in os.listdir(base_path):
-        if not f.endswith('.joblib'):
-            continue
-
-        full_path = os.path.join(base_path, f)
-        if f.startswith('pokemon_classifier_'):
-            model_files.append(full_path)
-        elif f.startswith('label_encoder_'):
-            encoder_files.append(full_path)
-        elif f.startswith('metrics_'):
-            metrics_files.append(full_path)
-
-    # Make sure we have at least one complete set
-    if not (model_files and encoder_files and metrics_files):
-        return None
-
-    # Get the latest files by modification time
-    latest_model = max(model_files, key=os.path.getmtime)
-    latest_encoder = max(encoder_files, key=os.path.getmtime)
-    latest_metrics = max(metrics_files, key=os.path.getmtime)
-
-    return latest_model, latest_encoder, latest_metrics
-
-
-def load(force_training=False) -> Tuple[RandomForestClassifier, LabelEncoder, Metrics]:
-    """
-    Load the most recent model if it exists, otherwise train a new one.
-    """
-    if not force_training:
-        # Try to load the most recent model
-        model_paths = get_latest_model_paths()
-
-        if model_paths is not None:
-            try:
-                print("Found existing model, loading...")
-                model, label_encoder, metrics = load_saved_model(*model_paths)
-                print("Successfully loaded existing model!")
-                return model, label_encoder, metrics
-            except Exception as e:
-                print(f"Error loading existing model: {e}")
-                print("Will train a new model instead.")
-        else:
-            print("No existing model found. Will train a new one.")
-
-    # If we get here, either no model exists or loading failed
-    # Set random seed for reproducibility
-    np.random.seed(SEED)
-
-    # Load the dataset using parallel processing
-    print("Loading Pokemon dataset...")
-    base_path = download_dataset()  # Get the dataset path
-    X, y, label_encoder = load_pokemon_dataset(base_path, target_size=(64, 64))
-
-    # Print dataset information
-    print("\nDataset Summary:")
-    print(f"Number of images: {len(X)}")
-    print(f"Image shape: {X[0].shape}")
-    print("\nClass distribution:")
-    for class_name, count in zip(label_encoder.classes_, np.bincount(y)):
-        print(f"{class_name}: {count} images")
-
-    # Preprocess the data
-    X = X.astype('float32') / 255.0  # Normalize pixel values
-    X = X.reshape(X.shape[0], -1)    # Flatten the images
-
-    # Split the dataset
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
-
-    print("\nTraining Random Forest Classifier...")
-    rf_classifier = RandomForestClassifier(
-        n_estimators=120,
-        max_depth=25,
-        n_jobs=-1,
-        random_state=SEED
-    )
-
-    rf_classifier.fit(X_train, y_train)
-
-    # Make predictions
-    y_pred = rf_classifier.predict(X_test)
-
-    # Generate metrics
-    feature_importance = rf_classifier.feature_importances_
-    class_report = classification_report(
-        y_test,
-        y_pred,
-        target_names=label_encoder.classes_,
-        output_dict=True
-    )
-    metrics = Metrics(class_report, feature_importance)
-
-    # Plot confusion matrix
-    plot_confusion_matrix(
-        y_test,
-        y_pred,
-        classes=label_encoder.classes_,
-        title='Pokemon Classification Confusion Matrix'
-    )
-
-    # Save the new model
-    save_model(rf_classifier, label_encoder, metrics)
-
-    return rf_classifier, label_encoder, metrics
