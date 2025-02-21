@@ -6,6 +6,10 @@ from pathlib import Path
 
 import loader
 
+EM_HAPPY = '✧٩(•́⌄•́๑)و ✧'
+EM_SAD = '(╥﹏╥)'
+EM_UNSURE = r'¯\_(Φ ᆺ Φ)_/¯'
+
 
 def process_image(image_path: str, target_size=(64, 64)) -> np.ndarray:
     """
@@ -37,9 +41,11 @@ def process_image(image_path: str, target_size=(64, 64)) -> np.ndarray:
 def main():
     # Set up argument parser
     parser = argparse.ArgumentParser(
-        description='Detect if an image is a Jigglypuff')
+        description='Detect if an image contains a Jigglypuff')
     parser.add_argument('image_path', type=str,
                         help='Path to the image file to classify')
+    parser.add_argument('--train', action="store_true",
+                        help='Train the model and save to file')
     parser.add_argument('--threshold', type=float, default=0.5,
                         help='Probability threshold for Jigglypuff detection (default: 0.5)')
 
@@ -53,11 +59,9 @@ def main():
 
     # Load the model
     print("Loading model...")
-    model, label_encoder, metrics = loader.load()
+    model, label_encoder, metrics = loader.load(force_training=args.train)
 
-    print("\nAvailable classes:")
-    for idx, class_name in enumerate(label_encoder.classes_):
-        print(f"{idx}: {class_name}")
+    print(metrics.info(model, label_encoder))
 
     # Find Jigglypuff class index (case-insensitive)
     try:
@@ -85,9 +89,13 @@ def main():
     print(f"Predicted class: {pred_class}")
 
     if pred_class == "Jigglypuff":
-        print("\nVerdict: This appears to be a Jigglypuff! ꒰◍ˊ◡ˋ꒱")
+        print(
+            f"\nVerdict: This image appears to contain a Jigglypuff! {EM_HAPPY}")
+        if jigglypuff_prob < args.threshold:
+            print(f"\t but not so sure {EM_UNSURE}")
     else:
-        print("\nVerdict: This does not appear to be a Jigglypuff (｡•́︿•̀｡)")
+        print(
+            f"\nVerdict: This image does not appear to contain a Jigglypuff {EM_SAD}")
 
 
 if __name__ == "__main__":

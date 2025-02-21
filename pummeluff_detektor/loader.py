@@ -5,7 +5,7 @@ import numpy as np
 from PIL import Image
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.metrics import classification_report, confusion_matrix
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -29,10 +29,14 @@ SEED = 19
 class Metrics:
     class_report: dict[Any, Any] | str
     feature_importance: Any
+    seed = SEED
 
     def __init__(self, class_report, feature_importance) -> None:
         self.class_report = class_report
         self.feature_importance = feature_importance
+
+    def info(self, model: RandomForestClassifier, label_encoder: LabelEncoder) -> str:
+        return "no"
 
 
 def download_dataset() -> Path:
@@ -218,38 +222,6 @@ def load_saved_model(
     return model, label_encoder, metrics
 
 
-def info() -> None:
-    """Main function to run the Pokemon classifier"""
-    rf_classifier, label_encoder, metrics = load()
-
-    print("\nClassification Report:")
-    print(metrics.class_report)
-
-    # Feature importance visualization
-    feature_importance = rf_classifier.feature_importances_
-    plt.figure(figsize=(10, 6))
-    plt.plot(feature_importance)
-    plt.title('Feature Importance in Random Forest Classifier')
-    plt.xlabel('Feature Index')
-    plt.ylabel('Importance')
-    plt.show()
-
-    model_path, encoder_path, metrics_path = save_model(
-        rf_classifier,
-        label_encoder,
-        metrics
-    )
-
-    # Example of loading the saved model
-    print("\nLoading saved model to verify...")
-    loaded_model, loaded_encoder, loaded_metrics = load_saved_model(
-        model_path,
-        encoder_path,
-        metrics_path
-    )
-    print("Model loaded successfully!")
-
-
 def get_latest_model_paths(base_path: str = 'models') -> Optional[Tuple[str, str, str]]:
     """
     Find the most recently saved model files.
@@ -292,27 +264,25 @@ def get_latest_model_paths(base_path: str = 'models') -> Optional[Tuple[str, str
     return latest_model, latest_encoder, latest_metrics
 
 
-def load() -> Tuple[RandomForestClassifier, LabelEncoder, Metrics]:
+def load(force_training=False) -> Tuple[RandomForestClassifier, LabelEncoder, Metrics]:
     """
     Load the most recent model if it exists, otherwise train a new one.
-
-    Returns:
-        Tuple of (model, label_encoder, metrics)
     """
-    # Try to load the most recent model
-    model_paths = get_latest_model_paths()
+    if not force_training:
+        # Try to load the most recent model
+        model_paths = get_latest_model_paths()
 
-    if model_paths is not None:
-        try:
-            print("Found existing model, loading...")
-            model, label_encoder, metrics = load_saved_model(*model_paths)
-            print("Successfully loaded existing model!")
-            return model, label_encoder, metrics
-        except Exception as e:
-            print(f"Error loading existing model: {e}")
-            print("Will train a new model instead.")
-    else:
-        print("No existing model found. Will train a new one.")
+        if model_paths is not None:
+            try:
+                print("Found existing model, loading...")
+                model, label_encoder, metrics = load_saved_model(*model_paths)
+                print("Successfully loaded existing model!")
+                return model, label_encoder, metrics
+            except Exception as e:
+                print(f"Error loading existing model: {e}")
+                print("Will train a new model instead.")
+        else:
+            print("No existing model found. Will train a new one.")
 
     # If we get here, either no model exists or loading failed
     # Set random seed for reproducibility
@@ -342,8 +312,8 @@ def load() -> Tuple[RandomForestClassifier, LabelEncoder, Metrics]:
 
     print("\nTraining Random Forest Classifier...")
     rf_classifier = RandomForestClassifier(
-        n_estimators=100,
-        max_depth=20,
+        n_estimators=120,
+        max_depth=25,
         n_jobs=-1,
         random_state=SEED
     )
