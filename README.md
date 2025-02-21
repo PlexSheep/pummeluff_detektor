@@ -8,7 +8,7 @@
     <a href="https://github.com/PlexSheep/pummeluff_detektor/actions">
         <img src="https://img.shields.io/github/actions/workflow/status/PlexSheep/pummeluff_detektor/release.yml?label=Release" alt="Release Status"/>
     </a>
-    <a href="https://github.com/PlexSheep/pummeluff_detektor/blob/main/LICENSE">
+    <a href="https://github.com/PlexSheep/pummeluff_detektor/blob/master/LICENSE">
         <img src="https://img.shields.io/github/license/PlexSheep/pummeluff_detektor" alt="License"/>
     </a>
     <a href="https://github.com/PlexSheep/pummeluff_detektor/releases">
