@@ -115,8 +115,7 @@ A: This detector does not have sound, so it cannot play the famous [song of Jigg
 ## 🖼️ Dataset with the images used for training
 
 The dataset is custom made and can be found
-[here](https://www.kaggle.com/datasets/plexsheep/jigglypuff-detection-data)
-(I hope this link works, otherwise you can contact me personally).
+[here](https://huggingface.co/datasets/PlexSheep/jigglypuff-detection-data).
 
 The pictures are combined together from these datasets:
 
