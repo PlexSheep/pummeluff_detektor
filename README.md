@@ -35,7 +35,7 @@ The Pummeluff Detektor is a super sophisticated machine learning system designed
 
 ```bash
 # Clone the repository
-git clone https://github.com/PlexSheep/pummeluff-detektor.git
+git clone https://github.com/PlexSheep/pummeluff_detektor
 cd pummeluff-detektor
 
 # Install the package with poetry
@@ -78,7 +78,7 @@ The detector uses these emoticons to express its confidence:
 
 ```bash
 # Clone the repository
-git clone https://github.com/PlexSheep/pummeluff-detektor.git
+git clone https://github.com/PlexSheep/pummeluff_detektor
 cd pummeluff-detektor
 
 # Install dependencies
