@@ -1,5 +1,5 @@
 <div align="center">
-    <img alt="icon" src="./docs/logo.png" width="30%"/>
+    <img alt="icon" src="./docs/logo.png" width="60%"/>
 </div>
 
 # 🎵 Pummeluff Detektor ✨
