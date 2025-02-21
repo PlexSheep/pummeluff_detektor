@@ -1,3 +1,4 @@
+import logging
 from __future__ import annotations
 import kagglehub
 import os
@@ -32,17 +33,17 @@ class Detector:
     label_encoder: LabelEncoder
     class_report: dict[Any, Any]
     feature_importance: Any
-    verbose: bool = False
     seed = SEED
 
-    def __init__(self,
-                 model: RandomForestClassifier,
-                 label_encoder: LabelEncoder,
-                 class_report: dict[Any, Any],
-                 verbose: bool = False) -> None:
+    def __init__(
+        self,
+        model: RandomForestClassifier,
+        label_encoder: LabelEncoder,
+        class_report: dict[Any, Any]
+    ) -> None:
+        self.logger = logging.getLogger(__name__)
         self.model = model
         self.label_encoder = label_encoder
-        self.verbose = verbose
         self.class_report = class_report
 
     def get_class_labels(self) -> list[str]:
@@ -59,7 +60,7 @@ class Detector:
         for idx, class_name in enumerate(self.get_class_labels()):
             buf += f"{idx:02}: {class_name}\n"
 
-        print(f"Class report\n{self.class_report}")
+        buf += f"Class report\n{self.class_report}"
 
         return buf
 
@@ -71,52 +72,54 @@ class Detector:
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         detector_path = os.path.join(
             base_path, f'pummeluff_detektor_{timestamp}.joblib')
+        self.logger.info(f"Saving model to {detector_path}")
         joblib.dump(self, detector_path)
 
     @staticmethod
-    def load(detector_path: Path, verbose: bool = False) -> Detector:
+    def load(detector_path: Path) -> Detector:
+        logger = logging.getLogger(__name__)
+        logger.info(f"trying to load a detector at: {detector_path}")
         d: Detector = joblib.load(detector_path)
-        d.verbose = verbose
         return d
 
     @staticmethod
-    def train(verbose: bool = True, training_images_dir: Path | None = None) -> Detector:
-        # If we get here, either no model exists or loading failed
+    def train(training_images_dir: Path | None = None) -> Detector:
+        logger = logging.getLogger(__name__)
         # Set random seed for reproducibility
         np.random.seed(SEED)
 
         # Load the dataset using parallel processing
-        print("Loading Pokemon dataset...")
+
+        logger.info("Loading Image dataset...")
         if training_images_dir is None:
-            data_base_path: Path = Detector.download_dataset()  # Get the dataset path
+            data_base_path: Path = Detector.download_dataset()
         else:
-            print(f"using custom training dir: {training_images_dir}")
+            logger.info(
+                f"Using custom training image directory: {training_images_dir}")
             data_base_path = training_images_dir
+
         X, y, label_encoder = Detector.load_image_dataset(
             data_base_path, target_size=(64, 64))
 
-        if verbose:
-            # Print dataset information
-            print("\nDataset Summary:")
-            print(f"Number of images: {len(X)}")
-            print(f"Image shape: {X[0].shape}")
-            print("\nClass distribution:")
-            for class_name, count in zip(label_encoder.classes_, np.bincount(y)):
-                print(f"{class_name}: {count} images")
-            print("\n")
+        logger.debug("\nDataset Summary:")
+        logger.debug(f"Number of images: {len(X)}")
+        logger.debug(f"Image shape: {X[0].shape}")
+        logger.debug("\nClass distribution:")
+        for class_name, count in zip(label_encoder.classes_, np.bincount(y)):
+            logger.debug(f"{class_name}: {count} images")
 
-        # Preprocess the data
-        X = X.astype('float32') / 255.0  # Normalize pixel values
-        X = X.reshape(X.shape[0], -1)    # Flatten the images
+        X = X.astype('float32') / 255.0
+        X = X.reshape(X.shape[0], -1)
 
         random_state: int = np.random.randint(1_000_000_000)
+        logger.debug(
+            f"Using random state: {random_state} for train/test split")
 
-        # Split the dataset
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, random_state=random_state, stratify=y
         )
 
-        print("\nTraining Random Forest Classifier...")
+        logger.info("Training Random Forest Classifier...")
         rf_classifier = RandomForestClassifier(
             n_estimators=120,
             max_depth=25,
@@ -125,11 +128,9 @@ class Detector:
         )
 
         rf_classifier.fit(X_train, y_train)
+        logger.info("Training completed")
 
-        # Make predictions
         y_pred = rf_classifier.predict(X_test)
-
-        # Generate metrics
         class_report = classification_report(
             y_test,
             y_pred,
@@ -137,39 +138,48 @@ class Detector:
             output_dict=True
         )
 
+        logger.debug(f"Classification report:\n{class_report}")
+
         d = Detector(rf_classifier, label_encoder,
-                     class_report=class_report, verbose=verbose)
+                     class_report=class_report)
         d.save()
+
+        plot_confusion_matrix(
+            y_true=y_test, y_pred=y_pred,
+            classes=d.get_class_labels(),
+            title="Pummeluff Detektor Confusion Matrix")
+
         return d
 
     @staticmethod
-    def load_or_train(verbose: bool = False, training_images_dir: Path | None = None, force_training: bool = False, base_path: Path = STANDARD_BASE_PATH) -> Detector:
+    def load_or_train(
+            training_images_dir: Path | None = None,
+            force_training: bool = False,
+            base_path: Path = STANDARD_BASE_PATH
+    ) -> Detector:
         """
         Load the most recent model if it exists, otherwise train a new one.
         """
+        logger = logging.getLogger(__name__)
         if not force_training:
-            if verbose:
-                print("Trying to load the latest model...")
+            logger.info("Trying to load the latest model...")
             loaded = Detector.load_latest(base_path)
 
             if loaded is not None:
                 try:
-                    loaded.verbose = verbose
-                    if verbose:
-                        print("Successfully loaded existing model!")
-                    return loaded
+                    logger.info("Successfully loaded existing model!")
                 except FileNotFoundError as e:
-                    print(f"Error loading existing model: {e}")
-                    print("Will train a new model instead.")
+                    logger.warning(f"Error loading existing model: {e}")
+                    logger.info("Will train a new model instead.")
             else:
-                print("No existing model found. Will train a new one.")
-        return Detector.train(verbose=verbose, training_images_dir=training_images_dir)
+                logger.error("No existing model found. Will train a new one.")
+        return Detector.train(training_images_dir=training_images_dir)
 
     @staticmethod
-    def load_latest(base_path: Path = STANDARD_BASE_PATH, verbose: bool = False) -> Detector | None:
+    def load_latest(base_path: Path = STANDARD_BASE_PATH) -> Detector | None:
         p = Detector.get_latest_detector_path(base_path)
         if p is not None:
-            return Detector.load(p, verbose=verbose)
+            return Detector.load(p)
         else:
             return None
 

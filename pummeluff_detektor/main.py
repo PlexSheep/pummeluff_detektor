@@ -1,11 +1,40 @@
 import sys
 import numpy as np
 from pathlib import Path
+import logging
 
 EM_HAPPY = '✧٩(•́⌄•́๑)و ✧'
 EM_SAD = '(╥﹏╥)'
 EM_UNSURE = r'¯\_(Φ ᆺ Φ)_/¯'
 EM_ANGRY = 'ヽ(｀⌒´メ)ノ'
+
+
+def setup_logging(verbose: bool) -> None:
+    """Configure logging based on verbosity level."""
+    level = logging.DEBUG if verbose else logging.INFO
+
+    # Create formatters
+    detailed_formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    simple_formatter = logging.Formatter('%(message)s')
+
+    # Set up console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(simple_formatter)
+
+    # Optional file handler for debug logging
+    if verbose:
+        file_handler = logging.FileHandler('pummeluff_detector.log')
+        file_handler.setFormatter(detailed_formatter)
+        file_handler.setLevel(logging.DEBUG)
+
+    # Configure root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(level)
+    root_logger.addHandler(console_handler)
+    if verbose:
+        root_logger.addHandler(file_handler)
 
 
 def process_image(image_path: str, target_size=(64, 64)) -> np.ndarray:
@@ -20,8 +49,10 @@ def process_image(image_path: str, target_size=(64, 64)) -> np.ndarray:
         Preprocessed image array
     """
     from PIL import Image
+    logger = logging.getLogger(__name__)
 
     try:
+        logger.debug(f"Processing image: {image_path}")
         img = Image.open(image_path).convert('RGB')
         img = img.resize(target_size, Image.Resampling.LANCZOS)
         img_array = np.array(img)
@@ -38,51 +69,50 @@ def process_image(image_path: str, target_size=(64, 64)) -> np.ndarray:
 
 
 def detector(args):
+    logger = logging.getLogger(__name__)
     import loader
 
-    # Validate image path
     image_path = Path(args.image_path)
     if not image_path.exists():
+        logger.error(f"Image file does not exist: {image_path}")
         print(f"Oh no {EM_SAD}: the image file does not exist {EM_UNSURE}")
         sys.exit(1)
 
-    # Load the model
-    print("Loading model...")
+    logger.info("Loading model...")
     detector = loader.Detector.load_or_train(
-        verbose=args.verbose, force_training=args.train, training_images_dir=args.training_images)
+        verbose=args.verbose,
+        force_training=args.train,
+        training_images_dir=args.training_images
+    )
     if detector is None:
+        logger.error("Failed to load or train detector")
         print(f"Oh no {EM_SAD}: the detector could not be loaded")
         sys.exit(1)
 
     if args.verbose:
-        print(f"\n{detector.info()}")
+        logger.debug(f"\n{detector.info()}")
 
-    # Find Jigglypuff class index (case-insensitive)
+    # Find Jigglypuff and Kirby class indices
     classes_lower = [c.lower() for c in detector.label_encoder.classes_]
     try:
         jigglypuff_idx = classes_lower.index('jigglypuff')
-    except ValueError:
-        print("Error: Model was not trained with jigglypuff class!")
-        sys.exit(1)
-
-    try:
         kirby_idx = classes_lower.index('kirby')
-    except ValueError:
-        print("Error: Model was not trained with kirby class!")
+    except ValueError as e:
+        logger.error(f"Required class not found in model: {e}")
         sys.exit(1)
 
-    # Process the image
-    print("Processing image...")
+    logger.info("Processing image...")
     img_array = process_image(str(image_path))
 
     # Get prediction probabilities
     pred_probs = detector.model.predict_proba(img_array)[0]
     jigglypuff_prob = pred_probs[jigglypuff_idx]
     kirby_prob = pred_probs[kirby_idx]
+    pred_class = str(detector.label_encoder.classes_[
+        pred_probs.argmax()]).lower()
 
-    # Get predicted class
-    pred_class: str = str(detector.label_encoder.classes_[
-                          pred_probs.argmax()]) .lower()
+    logger.debug(
+        f"Prediction probabilities: Jigglypuff={jigglypuff_prob:.2%}, Kirby={kirby_prob:.2%}")
 
     # Print results
     print("\nResults:")
@@ -92,20 +122,24 @@ def detector(args):
     print(f"Predicted class: {pred_class}")
 
     if pred_class == "jigglypuff":
-        print(
-            f"\nVerdict: This image appears to contain a Jigglypuff! {EM_HAPPY}")
+        msg = f"Verdict: This image appears to contain a Jigglypuff! {EM_HAPPY}"
         if jigglypuff_prob < args.threshold:
-            print(f"\t but not so sure {EM_UNSURE}")
+            msg += f"\n\t but not so sure {EM_UNSURE}"
+        print(msg)
+        logger.info(
+            f"Detected Jigglypuff with {jigglypuff_prob:.2%} confidence")
     else:
-        print(
-            f"\nVerdict: This image does not appear to contain a Jigglypuff {EM_SAD}")
+        msg = f"Verdict: This image does not appear to contain a Jigglypuff {EM_SAD}"
         if pred_class == "kirby":
-            print(f"\t BUT IT SEEMS TO CONTAIN A KIRBY!! {EM_ANGRY}")
+            msg += f"\n\t BUT IT SEEMS TO CONTAIN A KIRBY!! {EM_ANGRY}"
+        print(msg)
+        logger.info(
+            f"Detected {pred_class} with {pred_probs.max():.2%} confidence")
 
 
 def main():
     import argparse
-    # Set up argument parser
+
     parser = argparse.ArgumentParser(
         description='Detect if an image contains a Jigglypuff')
     parser.add_argument('image_path', type=str,
@@ -113,7 +147,7 @@ def main():
     parser.add_argument('--train', action="store_true",
                         help='Train the model and save to file')
     parser.add_argument('--verbose', '-v', action="store_true",
-                        help='Show many output')
+                        help='Show debug output')
     parser.add_argument('--threshold', type=float, default=0.5,
                         help='Probability threshold for Jigglypuff detection (default: 0.5)')
     parser.add_argument('--training-images', default=None,
@@ -121,13 +155,18 @@ def main():
 
     args = parser.parse_args()
 
+    # Set up logging before anything else
+    setup_logging(args.verbose)
+    logger = logging.getLogger(__name__)
+
     if args.training_images is not None:
         args.training_images = Path(args.training_images)
 
     try:
-        print("Loading detector...")
+        logger.info("Starting Pummeluff detector...")
         detector(args)
     except KeyboardInterrupt:
+        logger.warning("Process interrupted by user")
         print(f"{EM_SAD} I was interrupted {EM_SAD}")
 
 
