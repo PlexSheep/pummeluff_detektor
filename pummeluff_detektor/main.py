@@ -4,6 +4,8 @@ import numpy as np
 from pathlib import Path
 import logging
 
+from pummeluff_detektor.loader import Detector
+
 EM_HAPPY = '✧٩(•́⌄•́๑)و ✧'
 EM_SAD = '(╥﹏╥)'
 EM_UNSURE = r'¯\_(Φ ᆺ Φ)_/¯'
@@ -81,6 +83,33 @@ def process_image(image_path: str, target_size=(64, 64)) -> np.ndarray:
         sys.exit(1)
 
 
+def load_detector(args) -> Detector:
+    from pummeluff_detektor import loader
+    logger = logging.getLogger(__name__)
+
+    logger.info("loading detector...")
+    detector = loader.Detector.load_or_train(
+        force_training=args.train,
+        training_images_dir=args.training_images
+    )
+    if detector is None:
+        logger.error("Failed to load or train detector")
+        print(f"Oh no {EM_SAD}: the detector could not be loaded")
+        sys.exit(1)
+    logger.info(f"done loading detector {EM_HAPPY}")
+    return detector
+
+
+def info(args: argparse.Namespace):
+    """
+    Print information about the model and detector, then exit
+    """
+
+    detector = load_detector(args)
+
+    print(f"\n{detector.info()}")
+
+
 def detector(args: argparse.Namespace):
     """
     Main detection function that processes an image and reports results.
@@ -105,18 +134,9 @@ def detector(args: argparse.Namespace):
         print(f"Oh no {EM_SAD}: the image file does not exist {EM_UNSURE}")
         sys.exit(1)
 
-    logger.info("Loading model...")
-    detector = loader.Detector.load_or_train(
-        force_training=args.train,
-        training_images_dir=args.training_images
-    )
-    if detector is None:
-        logger.error("Failed to load or train detector")
-        print(f"Oh no {EM_SAD}: the detector could not be loaded")
-        sys.exit(1)
+    detector = load_detector(args)
 
-    if args.verbose:
-        logger.debug(f"\n{detector.info()}")
+    logger.debug(f"\n{detector.info()}")
 
     # Find Jigglypuff and Kirby class indices
     classes_lower = [c.lower() for c in detector.label_encoder.classes_]
@@ -169,7 +189,7 @@ def main():
     parser = argparse.ArgumentParser(
         description='Detect if an image contains a Jigglypuff')
     parser.add_argument('image_path', type=str,
-                        help='Path to the image file to classify')
+                        help='Path to the image file to classify', nargs='?')
     parser.add_argument('--train', action="store_true",
                         help='Train the model and save to file')
     parser.add_argument('--verbose', '-v', action="store_true",
@@ -178,6 +198,8 @@ def main():
                         help='Probability threshold for Jigglypuff detection (default: 0.5)')
     parser.add_argument('--training-images', default=None,
                         help='Path to directory with custom training images')
+    parser.add_argument('-i', "--info", action="store_true",
+                        help="show info and exit")
 
     args = parser.parse_args()
 
@@ -189,8 +211,14 @@ def main():
         args.training_images = Path(args.training_images)
 
     try:
-        logger.info("Starting Pummeluff detector...")
-        detector(args)
+        if args.info:
+            info(args)
+        else:
+            if args.image_path is None:
+                parser.print_usage()
+                parser.exit(1)
+            logger.info("Starting Pummeluff detector...")
+            detector(args)
     except KeyboardInterrupt:
         logger.warning("Process interrupted by user")
         print(f"{EM_SAD} I was interrupted {EM_SAD}")
