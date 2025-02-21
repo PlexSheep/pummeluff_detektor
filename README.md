@@ -51,10 +51,10 @@ The Pummeluff Detektor uses a Random Forest Classifier trained on a curated data
 
 The detector uses these emoticons to express its confidence:
 
-- ✧٩(•́⌄•́๑)و ✧ - "That's definitely a Jigglypuff!"
-- (╥﹏╥) - "No Jigglypuff detected..."
-- ¯\\_(Φ ᆺ Φ)_/¯ - "Not quite sure about this one..."
-- ヽ(｀⌒´メ)ノ - "IT'S KIRBY!!!"
+- `✧٩(•́⌄•́๑)و ✧` - "That's definitely a Jigglypuff!"
+- `(╥﹏╥)` - "No Jigglypuff detected..."
+- `¯\\_(Φ ᆺ Φ)_/¯` - "Not quite sure about this one..."
+- `ヽ(｀⌒´メ)ノ` - "IT'S KIRBY!!!"
 
 ## 🧪 Development
 
