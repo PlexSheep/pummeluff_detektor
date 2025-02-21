@@ -245,6 +245,7 @@ class Detector:
             if loaded is not None:
                 try:
                     logger.info("Successfully loaded existing model!")
+                    return loaded
                 except FileNotFoundError as e:
                     logger.warning(f"Error loading existing model: {e}")
                     logger.info("Will train a new model instead.")
