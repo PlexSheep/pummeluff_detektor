@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.2.0](https://github.com/PlexSheep/pummeluff_detektor/compare/v0.1.0...v0.2.0) (2025-02-21)
+
+
+### Features
+
+* download the default model from huggingface ([87ba6a7](https://github.com/PlexSheep/pummeluff_detektor/commit/87ba6a74136dd383346f678e4b9a6e5a69561e0f))
+* store models in user_data_dir ([c7665a6](https://github.com/PlexSheep/pummeluff_detektor/commit/c7665a65c19514d03a4217c868b2c5cdd59b2079))
+
+
+### Bug Fixes
+
+* load_or_train did not return the loaded model ([73f60a4](https://github.com/PlexSheep/pummeluff_detektor/commit/73f60a469ff999910ec3e5b3070eca5ae64db3bd))
+* make loader import absolute instead of relative ([e2210c1](https://github.com/PlexSheep/pummeluff_detektor/commit/e2210c13c0a9653d172a4121f8c459e1a76533a3))
+* remove an old verbose argument ([0ccd184](https://github.com/PlexSheep/pummeluff_detektor/commit/0ccd1840eda3be802f44889330442838031894fa))
+* something was weird with installing as executable ([8735bd8](https://github.com/PlexSheep/pummeluff_detektor/commit/8735bd838cb65fe443988ab951d283b5630f3f27))
+
+
+### Documentation
+
+* adjust readme ([ccdb4fd](https://github.com/PlexSheep/pummeluff_detektor/commit/ccdb4fd5c079c481cb5115915554661ba1a31ce5))
+* adjust readme header ([00c63c4](https://github.com/PlexSheep/pummeluff_detektor/commit/00c63c45c3ec0376ea78d37dbdde38cec1926d6d))
+* change dataset link to the huggingface one ([d2d6fb8](https://github.com/PlexSheep/pummeluff_detektor/commit/d2d6fb81ec06311fbe6c37415685bf8fbe7a8965))
+* Create LICENSE ([db29a76](https://github.com/PlexSheep/pummeluff_detektor/commit/db29a7686295fa753f998233591795fa92c8343a))
+* fix cmd ([1b29553](https://github.com/PlexSheep/pummeluff_detektor/commit/1b2955319f7f67fbd60f43136dfa4f156c43fc4e))
+* fix cmd in devel section ([b189225](https://github.com/PlexSheep/pummeluff_detektor/commit/b189225938061728e7571f66d1b2ddd465fbae37))
+* fix LICENSE badge in readme ([9d98fd2](https://github.com/PlexSheep/pummeluff_detektor/commit/9d98fd2396f256ab0f05587209a3b74e3729a0a8))
+* fix link ([75518b0](https://github.com/PlexSheep/pummeluff_detektor/commit/75518b09ad0ad6786e79dd69c1ff73bfb8be50d1))
+* fix link again ([ba7de04](https://github.com/PlexSheep/pummeluff_detektor/commit/ba7de04d3f283ae513ad90f80c13b5252950b698))
+
 ## 0.1.0 (2025-02-21)
 
 
