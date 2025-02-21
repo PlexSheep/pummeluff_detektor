@@ -34,8 +34,12 @@ The Pummeluff Detektor is a super sophisticated machine learning system designed
 ## 🚀 Quick Start
 
 ```bash
-# Install the package
-pip install pummeluff-detektor
+# Clone the repository
+git clone https://github.com/yourusername/pummeluff-detektor.git
+cd pummeluff-detektor
+
+# Install the package with poetry
+poetry install
 
 # Run detection on an image
 pummeluff-detektor path/to/your/suspicious/pink/blob.jpg

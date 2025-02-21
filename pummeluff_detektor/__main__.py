@@ -1,3 +1,4 @@
-import main
+from pummeluff_detektor.main import main
 
-main.main()
+if __name__ == "__main__":
+    main()
