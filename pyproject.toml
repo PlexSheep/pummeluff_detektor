@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pummeluff-detektor"
-version = "0.1.0"
+version = "0.2.0"
 description = "A sophisticated ML-powered detector to distinguish Jigglypuff from imposters (especially Kirby!)"
 authors = ["Christoph J. Scherr <software@cscherr.de>"]
 license = "MIT"
