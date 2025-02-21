@@ -1,6 +1,5 @@
 from __future__ import annotations
 import logging
-import kagglehub
 import os
 import numpy as np
 from PIL import Image
@@ -26,6 +25,7 @@ Labels = np.ndarray  # Shape: (n_samples,)
 ProcessArgs = Tuple[str, str, Tuple[int, int]]
 
 SEED: int = 19
+DEFAULT_DATASET: str = "jigglypuff-detection-data"
 
 DATA_DIR = Path(appdirs.user_data_dir("pummeluff-detektor"))
 MODEL_DIR = DATA_DIR / "models"
@@ -309,10 +309,19 @@ class Detector:
         Returns:
             Path: Path to the downloaded dataset directory
         """
-        DATASET_DIR.mkdir(parents=True, exist_ok=True)
-        path = kagglehub.dataset_download(
-            "plexsheep/jigglypuff-detection-data")
+        from huggingface_hub import snapshot_download
+        logger = logging.getLogger(__name__)
 
+        DATASET_DIR.mkdir(parents=True, exist_ok=True)
+
+        logger.info("Downloading dataset from HuggingFace...")
+
+        path = snapshot_download(
+            repo_id=f"plexsheep/{DEFAULT_DATASET}",
+            repo_type="dataset",
+            local_dir=DATASET_DIR / DEFAULT_DATASET
+        )
+        logger.info(f"Downloaded the default dataset to {path}")
         return Path(path)
 
     @staticmethod
