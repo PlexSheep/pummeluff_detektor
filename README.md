@@ -1,9 +1,5 @@
 <div align="center">
     <img alt="icon" src="./docs/logo.png" width="60%"/>
-</div>
-
-<div align="center">
-    <img alt="icon" src="./docs/logo.png" width="60%"/>
     <h3>🎵 Pummeluff Detektor ✨</h3>
     <p>
         A ML-powered detector to distinguish Jigglypuff from imposters (especially Kirby!)
