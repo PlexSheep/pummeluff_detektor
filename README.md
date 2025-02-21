@@ -36,7 +36,7 @@ The Pummeluff Detektor is a super sophisticated machine learning system designed
 ```bash
 # Clone the repository
 git clone https://github.com/PlexSheep/pummeluff_detektor
-cd pummeluff-detektor
+cd pummeluff_detektor
 
 # Install the package with poetry
 poetry install
