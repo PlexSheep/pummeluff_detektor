@@ -97,7 +97,7 @@ def detector(args: argparse.Namespace):
         SystemExit: On various error conditions
     """
     logger = logging.getLogger(__name__)
-    import loader
+    from pummeluff_detektor import loader
 
     image_path = Path(args.image_path)
     if not image_path.exists():
