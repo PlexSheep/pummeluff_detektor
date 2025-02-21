@@ -16,6 +16,7 @@ from tqdm import tqdm
 import joblib
 from pathlib import Path
 from typing import Tuple, List, Optional,  Any
+import appdirs
 
 # Custom types
 ImageArray = np.ndarray  # Shape: (height, width, 3)
@@ -25,7 +26,13 @@ Labels = np.ndarray  # Shape: (n_samples,)
 ProcessArgs = Tuple[str, str, Tuple[int, int]]
 
 SEED: int = 19
-STANDARD_BASE_PATH: Path = Path("models")
+
+DATA_DIR = Path(appdirs.user_data_dir("pummeluff-detektor"))
+MODEL_DIR = DATA_DIR / "models"
+
+# For downloaded datasets
+CACHE_DIR = Path(appdirs.user_cache_dir("pummeluff-detektor"))
+DATASET_DIR = CACHE_DIR / "datasets"
 
 
 class Detector:
@@ -56,6 +63,10 @@ class Detector:
         self.model = model
         self.label_encoder = label_encoder
         self.class_report = class_report
+
+        # Create directories if they don't exist
+        MODEL_DIR.mkdir(parents=True, exist_ok=True)
+        DATASET_DIR.mkdir(parents=True, exist_ok=True)
 
     def get_class_labels(self) -> list[str]:
         """
@@ -88,13 +99,13 @@ class Detector:
 
         return buf
 
-    def save(self, base_path: Path = STANDARD_BASE_PATH) -> None:
+    def save(self, base_path: Path = MODEL_DIR) -> None:
         """
         Save the detector to a joblib file.
 
         Args:
             base_path (Path): Directory where the model should be saved
-                            (default: STANDARD_BASE_PATH)
+                            (default: MODEL_DIR)
         """
         try:
             os.mkdir(base_path)
@@ -213,7 +224,7 @@ class Detector:
     def load_or_train(
             training_images_dir: Path | None = None,
             force_training: bool = False,
-            base_path: Path = STANDARD_BASE_PATH
+            base_path: Path = MODEL_DIR
     ) -> Detector:
         """
         Load the most recent model if it exists, otherwise train a new one.
@@ -242,7 +253,7 @@ class Detector:
         return Detector.train(training_images_dir=training_images_dir)
 
     @staticmethod
-    def load_latest(base_path: Path = STANDARD_BASE_PATH) -> Detector | None:
+    def load_latest(base_path: Path = MODEL_DIR) -> Detector | None:
         """
         Load the most recently saved detector model.
 
@@ -259,7 +270,7 @@ class Detector:
             return None
 
     @staticmethod
-    def get_latest_detector_path(base_path: Path = STANDARD_BASE_PATH) -> Path | None:
+    def get_latest_detector_path(base_path: Path = MODEL_DIR) -> Path | None:
         """
         Get the path to the most recently saved detector model.
 
@@ -298,6 +309,7 @@ class Detector:
         Returns:
             Path: Path to the downloaded dataset directory
         """
+        DATASET_DIR.mkdir(parents=True, exist_ok=True)
         path = kagglehub.dataset_download(
             "plexsheep/jigglypuff-detection-data")
 
