@@ -1,9 +1,11 @@
 import sys
 import numpy as np
+from pathlib import Path
 
 EM_HAPPY = '✧٩(•́⌄•́๑)و ✧'
 EM_SAD = '(╥﹏╥)'
 EM_UNSURE = r'¯\_(Φ ᆺ Φ)_/¯'
+EM_ANGRY = 'ヽ(｀⌒´メ)ノ'
 
 
 def process_image(image_path: str, target_size=(64, 64)) -> np.ndarray:
@@ -37,7 +39,6 @@ def process_image(image_path: str, target_size=(64, 64)) -> np.ndarray:
 
 def detector(args):
     import loader
-    from pathlib import Path
 
     # Validate image path
     image_path = Path(args.image_path)
@@ -48,7 +49,7 @@ def detector(args):
     # Load the model
     print("Loading model...")
     detector = loader.Detector.load_or_train(
-        verbose=args.verbose, force_training=args.train)
+        verbose=args.verbose, force_training=args.train, training_images_dir=args.training_images)
     if detector is None:
         print(f"Oh no {EM_SAD}: the detector could not be loaded")
         sys.exit(1)
@@ -57,11 +58,17 @@ def detector(args):
         print(f"\n{detector.info()}")
 
     # Find Jigglypuff class index (case-insensitive)
+    classes_lower = [c.lower() for c in detector.label_encoder.classes_]
     try:
-        classes_lower = [c.lower() for c in detector.label_encoder.classes_]
         jigglypuff_idx = classes_lower.index('jigglypuff')
     except ValueError:
-        print("Error: Model was not trained with Jigglypuff class!")
+        print("Error: Model was not trained with jigglypuff class!")
+        sys.exit(1)
+
+    try:
+        kirby_idx = classes_lower.index('kirby')
+    except ValueError:
+        print("Error: Model was not trained with kirby class!")
         sys.exit(1)
 
     # Process the image
@@ -71,17 +78,20 @@ def detector(args):
     # Get prediction probabilities
     pred_probs = detector.model.predict_proba(img_array)[0]
     jigglypuff_prob = pred_probs[jigglypuff_idx]
+    kirby_prob = pred_probs[kirby_idx]
 
     # Get predicted class
-    pred_class = detector.label_encoder.classes_[pred_probs.argmax()]
+    pred_class: str = str(detector.label_encoder.classes_[
+                          pred_probs.argmax()]) .lower()
 
     # Print results
     print("\nResults:")
     print(f"Image: {image_path}")
     print(f"Jigglypuff probability: {jigglypuff_prob:.2%}")
+    print(f"Kirby probability: {kirby_prob:.2%}")
     print(f"Predicted class: {pred_class}")
 
-    if pred_class == "Jigglypuff":
+    if pred_class == "jigglypuff":
         print(
             f"\nVerdict: This image appears to contain a Jigglypuff! {EM_HAPPY}")
         if jigglypuff_prob < args.threshold:
@@ -89,6 +99,8 @@ def detector(args):
     else:
         print(
             f"\nVerdict: This image does not appear to contain a Jigglypuff {EM_SAD}")
+        if pred_class == "kirby":
+            print(f"\t BUT IT SEEMS TO CONTAIN A KIRBY!! {EM_ANGRY}")
 
 
 def main():
@@ -104,8 +116,13 @@ def main():
                         help='Show many output')
     parser.add_argument('--threshold', type=float, default=0.5,
                         help='Probability threshold for Jigglypuff detection (default: 0.5)')
+    parser.add_argument('--training-images', default=None,
+                        help='Path to directory with custom training images')
 
     args = parser.parse_args()
+
+    if args.training_images is not None:
+        args.training_images = Path(args.training_images)
 
     try:
         print("Loading detector...")

@@ -46,10 +46,7 @@ class Detector:
         self.class_report = class_report
 
     def get_class_labels(self) -> list[str]:
-        l = []
-        for c in self.label_encoder.classes_:
-            l.append(str(c))
-        return l
+        return [str(c) for c in self.label_encoder.classes_]
 
     def info(self) -> str:
         buf = ""
@@ -83,14 +80,18 @@ class Detector:
         return d
 
     @staticmethod
-    def train(verbose: bool = True) -> Detector:
+    def train(verbose: bool = True, training_images_dir: Path | None = None) -> Detector:
         # If we get here, either no model exists or loading failed
         # Set random seed for reproducibility
         np.random.seed(SEED)
 
         # Load the dataset using parallel processing
         print("Loading Pokemon dataset...")
-        data_base_path: Path = Detector.download_dataset()  # Get the dataset path
+        if training_images_dir is None:
+            data_base_path: Path = Detector.download_dataset()  # Get the dataset path
+        else:
+            print(f"using custom training dir: {training_images_dir}")
+            data_base_path = training_images_dir
         X, y, label_encoder = Detector.load_image_dataset(
             data_base_path, target_size=(64, 64))
 
@@ -142,7 +143,7 @@ class Detector:
         return d
 
     @staticmethod
-    def load_or_train(verbose: bool = False, force_training: bool = False, base_path: Path = STANDARD_BASE_PATH) -> Detector:
+    def load_or_train(verbose: bool = False, training_images_dir: Path | None = None, force_training: bool = False, base_path: Path = STANDARD_BASE_PATH) -> Detector:
         """
         Load the most recent model if it exists, otherwise train a new one.
         """
@@ -162,7 +163,7 @@ class Detector:
                     print("Will train a new model instead.")
             else:
                 print("No existing model found. Will train a new one.")
-        return Detector.train(verbose=verbose)
+        return Detector.train(verbose=verbose, training_images_dir=training_images_dir)
 
     @staticmethod
     def load_latest(base_path: Path = STANDARD_BASE_PATH, verbose: bool = False) -> Detector | None:
