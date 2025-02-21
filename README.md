@@ -1,3 +1,7 @@
+<div align="center">
+    <img alt="icon" src="./docs/logo.png" width="30%"/>
+</div>
+
 # 🎵 Pummeluff Detektor ✨
 
 > "Is it a Jigglypuff seen from above?" - Professor Oak, probably
