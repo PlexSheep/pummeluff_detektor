@@ -45,7 +45,7 @@ poetry install
 pummeluff-detektor path/to/your/suspicious/pink/blob.jpg
 
 # Train a new model (optional)
-pummeluff-detektor --train path/to/your/image.jpg
+pummeluff-detektor --train path/to/your/images/dataset
 ```
 
 ## 🛠️ Command Line Options
