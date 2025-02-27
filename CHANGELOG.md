@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/PlexSheep/pummeluff_detektor/compare/v0.3.0...v0.3.1) (2025-02-27)
+
+
+### Documentation
+
+* quickstart used a bad arg with --train ([6eff3d9](https://github.com/PlexSheep/pummeluff_detektor/commit/6eff3d9387c1f05bdd986f82cbc8e012584ab419))
+
 ## [0.3.0](https://github.com/PlexSheep/pummeluff_detektor/compare/v0.2.0...v0.3.0) (2025-02-21)
 
 
